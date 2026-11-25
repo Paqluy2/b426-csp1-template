@@ -2,6 +2,7 @@ package com.joysistvi.recordingapp.view;
 
 import com.joysistvi.recordingapp.model.Artist;
 import com.joysistvi.recordingapp.service.ArtistService;
+import com.joysistvi.recordingapp.model.User;
 
 import java.util.List;
 import java.util.Scanner;
@@ -13,6 +14,59 @@ public class ArtistView {
     public ArtistView(ArtistService artistService) {
         this.artistService = artistService;
         this.scanner = new Scanner(System.in);
+    }
+
+    public void handleMenu(User currentUser) {
+        if (!currentUser.isAdmin()) {
+            handleUserMenu();
+            return;
+        }
+
+        while (true) {
+            System.out.println("\n=== ARTIST MANAGEMENT MENU (ADMIN) ===");
+            System.out.println("1. View All Active");
+            System.out.println("2. Create");
+            System.out.println("3. Update");
+            System.out.println("4. Search");
+            System.out.println("5. Archive (Soft Delete)");
+            System.out.println("6. Restore Archived");
+            System.out.println("7. Delete (Permanent)");
+            System.out.println("0. Back");
+
+            int choice = promptForInt("Choose an option: ");
+            switch (choice) {
+                case 1 -> displayAllArtists();
+                case 2 -> promptCreateArtist();
+                case 3 -> promptUpdateArtist();
+                case 4 -> promptSearchArtists();
+                case 5 -> promptArchiveArtist();
+                case 6 -> promptRestoreArtist();
+                case 7 -> promptDeleteArtist();
+                case 0 -> {
+                    return;
+                }
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    private void handleUserMenu() {
+        while (true) {
+            System.out.println("\n=== BROWSE ARTISTS ===");
+            System.out.println("1. View All Active Artists");
+            System.out.println("2. Search Artists");
+            System.out.println("0. Back");
+
+            int choice = promptForInt("Choose an option: ");
+            switch (choice) {
+                case 1 -> displayAllArtists();
+                case 2 -> promptSearchArtists();
+                case 0 -> {
+                    return;
+                }
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
     }
 
     public void displayAllArtists() {
@@ -32,48 +86,35 @@ public class ArtistView {
 
     public void promptUpdateArtist() {
         displayAllArtists();
-        Integer id = readInt("\nEnter Artist ID to update: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter Artist ID to update: ");
         System.out.print("Enter new artist name: ");
         String name = scanner.nextLine();
 
         if (artistService.updateArtist(id, name)) {
             System.out.println("Artist ID " + id + " updated successfully!");
             displayAllArtists();
-        } else if (id > 0 && name != null && !name.trim().isEmpty()) {
-            System.out.println("No active artist found with ID " + id + ".");
         }
     }
 
-    public void promptDeleteArtist() {
-        displayAllArtists();
-        Integer id = readInt("\nEnter Artist ID to delete permanently: ");
-        if (id == null) {
-            return;
-        }
+    public void promptSearchArtists() {
+        System.out.print("\nEnter artist search keyword: ");
+        String keyword = scanner.nextLine();
 
-        if (artistService.deleteArtist(id)) {
-            System.out.println("Artist ID " + id + " deleted successfully!");
-            displayAllArtists();
-        } else if (id > 0) {
-            System.out.println("Could not delete Artist ID " + id + " (not found or referenced by albums).");
+        List<Artist> results = artistService.searchArtists(keyword);
+        if (!results.isEmpty()) {
+            printArtistTable("Search Results", results);
+        } else if (keyword != null && !keyword.trim().isEmpty()) {
+            System.out.println("No active artists found matching \"" + keyword.trim() + "\".");
         }
     }
 
     public void promptArchiveArtist() {
         displayAllArtists();
-        Integer id = readInt("\nEnter Artist ID to archive: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter Artist ID to archive: ");
 
         if (artistService.archiveArtist(id)) {
             System.out.println("Artist ID " + id + " archived successfully!");
             displayAllArtists();
-        } else if (id > 0) {
-            System.out.println("No active artist found with ID " + id + ".");
         }
     }
 
@@ -85,26 +126,21 @@ public class ArtistView {
         }
 
         printArtistTable("Archived Artists", archivedArtists);
-        Integer id = readInt("\nEnter Archived Artist ID to restore: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter Archived Artist ID to restore: ");
 
         if (artistService.restoreArtist(id)) {
             System.out.println("Artist ID " + id + " restored successfully!");
             displayAllArtists();
-        } else if (id > 0) {
-            System.out.println("No archived artist found with ID " + id + ".");
         }
     }
 
-    public void promptSearchArtists() {
-        System.out.print("\nEnter artist search keyword: ");
-        String keyword = scanner.nextLine();
+    public void promptDeleteArtist() {
+        displayAllArtists();
+        int id = promptForInt("\nEnter Artist ID to delete permanently: ");
 
-        List<Artist> results = artistService.searchArtists(keyword);
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            printArtistTable("Search Results: \"" + keyword.trim() + "\"", results);
+        if (artistService.deleteArtist(id)) {
+            System.out.println("Artist ID " + id + " deleted successfully!");
+            displayAllArtists();
         }
     }
 
@@ -120,14 +156,15 @@ public class ArtistView {
         }
     }
 
-    private Integer readInt(String prompt) {
-        System.out.print(prompt);
-        String input = scanner.nextLine().trim();
-        try {
-            return Integer.parseInt(input);
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid input: Please enter a valid integer.");
-            return null;
+    private int promptForInt(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a valid integer.");
+            }
         }
     }
 }

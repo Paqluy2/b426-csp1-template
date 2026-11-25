@@ -2,6 +2,7 @@ package com.joysistvi.recordingapp.view;
 
 import com.joysistvi.recordingapp.model.Album;
 import com.joysistvi.recordingapp.service.AlbumService;
+import com.joysistvi.recordingapp.model.User;
 
 import java.util.List;
 import java.util.Scanner;
@@ -15,6 +16,59 @@ public class AlbumView {
         this.scanner = new Scanner(System.in);
     }
 
+    public void handleMenu(User currentUser) {
+        if (!currentUser.isAdmin()) {
+            handleUserMenu();
+            return;
+        }
+
+        while (true) {
+            System.out.println("\n=== ALBUM MANAGEMENT MENU (ADMIN) ===");
+            System.out.println("1. View All Active");
+            System.out.println("2. Create");
+            System.out.println("3. Update");
+            System.out.println("4. Search");
+            System.out.println("5. Archive (Soft Delete)");
+            System.out.println("6. Restore Archived");
+            System.out.println("7. Delete (Permanent)");
+            System.out.println("0. Back");
+
+            int choice = promptForInt("Choose an option: ");
+            switch (choice) {
+                case 1 -> displayAllAlbums();
+                case 2 -> promptCreateAlbum();
+                case 3 -> promptUpdateAlbum();
+                case 4 -> promptSearchAlbums();
+                case 5 -> promptArchiveAlbum();
+                case 6 -> promptRestoreAlbum();
+                case 7 -> promptDeleteAlbum();
+                case 0 -> {
+                    return;
+                }
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    private void handleUserMenu() {
+        while (true) {
+            System.out.println("\n=== BROWSE ALBUMS ===");
+            System.out.println("1. View All Active Albums");
+            System.out.println("2. Search Albums");
+            System.out.println("0. Back");
+
+            int choice = promptForInt("Choose an option: ");
+            switch (choice) {
+                case 1 -> displayAllAlbums();
+                case 2 -> promptSearchAlbums();
+                case 0 -> {
+                    return;
+                }
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
     public void displayAllAlbums() {
         List<Album> albums = albumService.getAllActiveAlbums();
         printAlbumTable("Active Albums", albums);
@@ -23,14 +77,8 @@ public class AlbumView {
     public void promptCreateAlbum() {
         System.out.print("\nEnter album name: ");
         String name = scanner.nextLine();
-        Integer year = readInt("Enter release year (1900-2100): ");
-        if (year == null) {
-            return;
-        }
-        Integer artistId = readInt("Enter Artist ID: ");
-        if (artistId == null) {
-            return;
-        }
+        int year = promptForInt("Enter release year (1900-2100): ");
+        int artistId = promptForInt("Enter Artist ID: ");
 
         if (albumService.createAlbum(name, year, artistId)) {
             System.out.println("Album created successfully!");
@@ -40,57 +88,37 @@ public class AlbumView {
 
     public void promptUpdateAlbum() {
         displayAllAlbums();
-        Integer id = readInt("\nEnter Album ID to update: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter Album ID to update: ");
         System.out.print("Enter new album name: ");
         String name = scanner.nextLine();
-        Integer year = readInt("Enter new release year (1900-2100): ");
-        if (year == null) {
-            return;
-        }
-        Integer artistId = readInt("Enter new Artist ID: ");
-        if (artistId == null) {
-            return;
-        }
+        int year = promptForInt("Enter new release year (1900-2100): ");
+        int artistId = promptForInt("Enter new Artist ID: ");
 
         if (albumService.updateAlbum(id, name, year, artistId)) {
             System.out.println("Album ID " + id + " updated successfully!");
             displayAllAlbums();
-        } else if (id > 0 && name != null && !name.trim().isEmpty()
-                && year >= 1900 && year <= 2100 && artistId > 0) {
-            System.out.println("No active album found with ID " + id + ".");
         }
     }
 
-    public void promptDeleteAlbum() {
-        displayAllAlbums();
-        Integer id = readInt("\nEnter Album ID to delete permanently: ");
-        if (id == null) {
-            return;
-        }
+    public void promptSearchAlbums() {
+        System.out.print("\nEnter album search keyword: ");
+        String keyword = scanner.nextLine();
 
-        if (albumService.deleteAlbum(id)) {
-            System.out.println("Album ID " + id + " deleted successfully!");
-            displayAllAlbums();
-        } else if (id > 0) {
-            System.out.println("Could not delete Album ID " + id + " (not found or referenced by songs).");
+        List<Album> results = albumService.searchAlbums(keyword);
+        if (!results.isEmpty()) {
+            printAlbumTable("Search Results", results);
+        } else if (keyword != null && !keyword.trim().isEmpty()) {
+            System.out.println("No active albums found matching \"" + keyword.trim() + "\".");
         }
     }
 
     public void promptArchiveAlbum() {
         displayAllAlbums();
-        Integer id = readInt("\nEnter Album ID to archive: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter Album ID to archive: ");
 
         if (albumService.archiveAlbum(id)) {
             System.out.println("Album ID " + id + " archived successfully!");
             displayAllAlbums();
-        } else if (id > 0) {
-            System.out.println("No active album found with ID " + id + ".");
         }
     }
 
@@ -102,26 +130,21 @@ public class AlbumView {
         }
 
         printAlbumTable("Archived Albums", archivedAlbums);
-        Integer id = readInt("\nEnter Archived Album ID to restore: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter Archived Album ID to restore: ");
 
         if (albumService.restoreAlbum(id)) {
             System.out.println("Album ID " + id + " restored successfully!");
             displayAllAlbums();
-        } else if (id > 0) {
-            System.out.println("No archived album found with ID " + id + ".");
         }
     }
 
-    public void promptSearchAlbums() {
-        System.out.print("\nEnter album search keyword: ");
-        String keyword = scanner.nextLine();
+    public void promptDeleteAlbum() {
+        displayAllAlbums();
+        int id = promptForInt("\nEnter Album ID to delete permanently: ");
 
-        List<Album> results = albumService.searchAlbums(keyword);
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            printAlbumTable("Search Results: \"" + keyword.trim() + "\"", results);
+        if (albumService.deleteAlbum(id)) {
+            System.out.println("Album ID " + id + " deleted successfully!");
+            displayAllAlbums();
         }
     }
 
@@ -141,14 +164,15 @@ public class AlbumView {
         }
     }
 
-    private Integer readInt(String prompt) {
-        System.out.print(prompt);
-        String input = scanner.nextLine().trim();
-        try {
-            return Integer.parseInt(input);
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid input: Please enter a valid integer.");
-            return null;
+    private int promptForInt(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a valid integer.");
+            }
         }
     }
 }

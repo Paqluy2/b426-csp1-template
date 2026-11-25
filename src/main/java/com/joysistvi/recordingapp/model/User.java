@@ -80,4 +80,8 @@ public class User {
     public void setArchived(boolean archived) {
         this.archived = archived;
     }
+
+    public boolean isAdmin() {
+        return role != null && role.equalsIgnoreCase("ADMIN");
+    }
 }

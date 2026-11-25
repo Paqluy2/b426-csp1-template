@@ -15,6 +15,40 @@ public class UserView {
         this.scanner = new Scanner(System.in);
     }
 
+    public void handleMenu(User currentUser) {
+        if (currentUser == null || !currentUser.isAdmin()) {
+            System.out.println("\nAccess Denied: Admin privileges are required for User Management.");
+            return;
+        }
+
+        while (true) {
+            System.out.println("\n=== USER MANAGEMENT MENU ===");
+            System.out.println("1. View All Active");
+            System.out.println("2. Create / Register");
+            System.out.println("3. Update");
+            System.out.println("4. Search");
+            System.out.println("5. Archive (Soft Delete)");
+            System.out.println("6. Restore Archived");
+            System.out.println("7. Delete (Permanent)");
+            System.out.println("0. Back");
+
+            int choice = promptForInt("Choose an option: ");
+            switch (choice) {
+                case 1 -> displayAllUsers();
+                case 2 -> promptCreateUser();
+                case 3 -> promptUpdateUser();
+                case 4 -> promptSearchUsers();
+                case 5 -> promptArchiveUser();
+                case 6 -> promptRestoreUser();
+                case 7 -> promptDeleteUser();
+                case 0 -> {
+                    return;
+                }
+                default -> System.out.println("Invalid option. Please try again.");
+            }
+        }
+    }
+
     public void displayAllUsers() {
         List<User> users = userService.getAllActiveUsers();
         printUserTable("Active Users", users);
@@ -30,16 +64,12 @@ public class UserView {
 
         if (userService.createUser(username, password, email)) {
             System.out.println("User registered successfully!");
-            displayAllUsers();
         }
     }
 
     public void promptUpdateUser() {
         displayAllUsers();
-        Integer id = readInt("\nEnter User ID to update: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter User ID to update: ");
         System.out.print("Enter new username: ");
         String username = scanner.nextLine();
         System.out.print("Enter new email: ");
@@ -48,39 +78,28 @@ public class UserView {
         if (userService.updateUser(id, username, email)) {
             System.out.println("User ID " + id + " updated successfully!");
             displayAllUsers();
-        } else if (id > 0 && username != null && !username.trim().isEmpty()
-                && email != null && email.contains("@") && email.contains(".")) {
-            System.out.println("No active user found with ID " + id + ".");
         }
     }
 
-    public void promptDeleteUser() {
-        displayAllUsers();
-        Integer id = readInt("\nEnter User ID to delete permanently: ");
-        if (id == null) {
-            return;
-        }
+    public void promptSearchUsers() {
+        System.out.print("\nEnter username search keyword: ");
+        String keyword = scanner.nextLine();
 
-        if (userService.deleteUser(id)) {
-            System.out.println("User ID " + id + " deleted successfully!");
-            displayAllUsers();
-        } else if (id > 0) {
-            System.out.println("Could not delete User ID " + id + " (not found or owns playlists).");
+        List<User> results = userService.searchUsers(keyword);
+        if (!results.isEmpty()) {
+            printUserTable("Search Results", results);
+        } else if (keyword != null && !keyword.trim().isEmpty()) {
+            System.out.println("No active users found matching \"" + keyword.trim() + "\".");
         }
     }
 
     public void promptArchiveUser() {
         displayAllUsers();
-        Integer id = readInt("\nEnter User ID to archive: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter User ID to archive: ");
 
         if (userService.archiveUser(id)) {
             System.out.println("User ID " + id + " archived successfully!");
             displayAllUsers();
-        } else if (id > 0) {
-            System.out.println("No active user found with ID " + id + ".");
         }
     }
 
@@ -92,30 +111,25 @@ public class UserView {
         }
 
         printUserTable("Archived Users", archivedUsers);
-        Integer id = readInt("\nEnter Archived User ID to restore: ");
-        if (id == null) {
-            return;
-        }
+        int id = promptForInt("\nEnter Archived User ID to restore: ");
 
         if (userService.restoreUser(id)) {
             System.out.println("User ID " + id + " restored successfully!");
             displayAllUsers();
-        } else if (id > 0) {
-            System.out.println("No archived user found with ID " + id + ".");
         }
     }
 
-    public void promptSearchUsers() {
-        System.out.print("\nEnter username search keyword: ");
-        String keyword = scanner.nextLine();
+    public void promptDeleteUser() {
+        displayAllUsers();
+        int id = promptForInt("\nEnter User ID to delete permanently: ");
 
-        List<User> results = userService.searchUsers(keyword);
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            printUserTable("Search Results: \"" + keyword.trim() + "\"", results);
+        if (userService.deleteUser(id)) {
+            System.out.println("User ID " + id + " deleted successfully!");
+            displayAllUsers();
         }
     }
 
-    public void promptLoginUser() {
+    public User promptLoginUser() {
         System.out.print("\nEnter username: ");
         String username = scanner.nextLine();
         System.out.print("Enter password: ");
@@ -126,6 +140,7 @@ public class UserView {
             System.out.println("Login successful! Welcome, "
                     + loggedInUser.getUsername() + " (" + loggedInUser.getRole() + ").");
         }
+        return loggedInUser;
     }
 
     private void printUserTable(String title, List<User> users) {
@@ -144,14 +159,15 @@ public class UserView {
         }
     }
 
-    private Integer readInt(String prompt) {
-        System.out.print(prompt);
-        String input = scanner.nextLine().trim();
-        try {
-            return Integer.parseInt(input);
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid input: Please enter a valid integer.");
-            return null;
+    private int promptForInt(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a valid integer.");
+            }
         }
     }
 }

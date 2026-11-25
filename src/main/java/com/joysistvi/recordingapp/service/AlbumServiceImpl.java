@@ -50,7 +50,7 @@ public class AlbumServiceImpl implements AlbumService {
             System.out.println("\nValidation Error: Album name is required.");
             return false;
         }
-        if (year < 1900 || year > 2026 {
+        if (year < 1900 || year > 2026) {
             System.out.println("\nValidation Error: Album year must be between 1900 and 2026.");
             return false;
         }
